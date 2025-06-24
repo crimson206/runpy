@@ -1,0 +1,13 @@
+[project]
+name = "runpy"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "crimson206",email = "sisung.kim1@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "cleo (>=2.1.0,<3.0.0)",
+    "pydantic (>=2.11.5,<3.0.0)"
+]
