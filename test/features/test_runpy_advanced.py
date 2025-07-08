@@ -27,13 +27,13 @@ class TestRunpyAdvanced:
                 return {"name": name, "price": price, "is_offer": is_offer}
 
         with allure.step("When I register and check help"):
-            from runpy import Runpy
+            from runpycli import Runpy
             
             cli = Runpy()
             cli.register(create_item)
             runner = CliRunner()
             
-            result = runner.invoke(cli.app, ['create_item', '--help'])
+            result = runner.invoke(cli.app, ['create-item', '--help'])
 
         with allure.step("Then parameter descriptions are shown"):
             assert result.exit_code == 0
@@ -62,7 +62,7 @@ class TestRunpyAdvanced:
                 return 42
 
         with allure.step("When I execute each function"):
-            from runpy import Runpy
+            from runpycli import Runpy
             
             cli = Runpy()
             cli.register(get_dict)
@@ -106,7 +106,7 @@ class TestRunpyAdvanced:
                 return a / b
 
         with allure.step("When I trigger an error"):
-            from runpy import Runpy
+            from runpycli import Runpy
             
             cli = Runpy()
             cli.register(divide)
@@ -140,7 +140,7 @@ class TestRunpyAdvanced:
                     pass
 
         with allure.step("When I register the entire module"):
-            from runpy import Runpy
+            from runpycli import Runpy
             
             cli = Runpy()
             cli.register_module(MathModule, prefix="math")
@@ -188,7 +188,7 @@ class TestRunpyAdvanced:
                 """Deploy a service"""
                 return f"Deploying {service} to {environment} (timeout: {timeout}s)"
             
-            from runpy import Runpy
+            from runpycli import Runpy
             
             cli = Runpy(config_file=config_file)
             cli.register(deploy)
