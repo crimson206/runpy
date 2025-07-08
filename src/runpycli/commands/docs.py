@@ -12,13 +12,10 @@ def add_docs_command(runpy_instance: "Runpy") -> None:
     @click.command(name="docs", help="View command documentation and help")
     @click.argument("commands", nargs=-1, required=False)
     @click.option("--filter", "-f", help="Filter commands by pattern")
-    @click.option("--interactive", "-i", is_flag=True, help="Interactive documentation browser")
     @click.option("--export", "-e", type=click.Choice(["markdown", "html", "man"]), help="Export documentation format")
-    def docs_command(commands, filter, interactive, export):
+    def docs_command(commands, filter, export):
         """Show documentation for commands"""
-        if interactive:
-            show_interactive_docs(runpy_instance)
-        elif export:
+        if export:
             export_docs(runpy_instance, export)
         elif commands:
             show_specific_docs(runpy_instance, commands)
@@ -80,16 +77,6 @@ def show_filtered_docs(runpy_instance: "Runpy", pattern: str) -> None:
         click.echo(f"No commands found matching pattern: {pattern}")
 
 
-def show_interactive_docs(runpy_instance: "Runpy") -> None:
-    """Show interactive documentation browser"""
-    click.echo("🔍 Interactive Documentation Browser")
-    click.echo("(Use arrow keys to navigate, Enter to select, 'q' to quit)")
-    click.echo()
-    
-    # For now, just show all docs
-    # In a full implementation, this would use a library like blessed or rich
-    # for proper interactive navigation
-    show_all_docs(runpy_instance)
 
 
 def export_docs(runpy_instance: "Runpy", format: str) -> None:

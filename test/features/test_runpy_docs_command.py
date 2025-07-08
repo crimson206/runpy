@@ -232,48 +232,6 @@ class TestRunpyDocsCommand:
             assert "user-update" not in result.output
             assert "delete-user" not in result.output
 
-    @allure.story("Interactive command selection")
-    @allure.title("Given interactive mode, When browsing docs, Then can select and view details")
-    def test_docs_interactive_mode(self):
-        with allure.step("Given commands to browse"):
-            def process_data(input_file: str, output_format: str = "json") -> str:
-                """Process data file and convert format
-                
-                Supports multiple input and output formats with
-                validation and error handling.
-                """
-                pass
-            
-            def analyze_data(file: str, metrics: list = None) -> str:
-                """Analyze data and generate report
-                
-                Performs statistical analysis on the provided data
-                and generates comprehensive reports.
-                """
-                pass
-
-        with allure.step("When I use interactive docs mode"):
-            from runpycli import Runpy
-            
-            cli = Runpy()
-            cli.register(process_data)
-            cli.register(analyze_data)
-            
-            runner = CliRunner()
-            
-            # Simulate interactive selection (would use arrow keys in real CLI)
-            result = runner.invoke(cli.app, ['docs', '--interactive'])
-
-        with allure.step("Then it provides interactive navigation"):
-            # In real implementation, this would show:
-            # - List of commands with summaries
-            # - Arrow key navigation
-            # - Enter to view full help
-            # - 'q' to quit
-            # - '/' to search
-            
-            # For testing, we just check the command runs
-            assert result.exit_code == 0 or "interactive" in result.output
 
     @allure.story("Export documentation")
     @allure.title("Given export format, When calling docs, Then generates documentation file")
