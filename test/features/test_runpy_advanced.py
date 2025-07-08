@@ -74,24 +74,26 @@ class TestRunpyAdvanced:
 
         with allure.step("Then output is properly formatted"):
             # Dictionary output (JSON format)
-            result = runner.invoke(cli.app, ['get_dict'])
+            result = runner.invoke(cli.app, ['get-dict'])
             assert result.exit_code == 0
             assert '"status": "ok"' in result.output
             assert '"count": 42' in result.output
             
-            # List output
-            result = runner.invoke(cli.app, ['get_list'])
+            # List output (test with underscore preserved)
+            cli2 = Runpy(transform_underscore_to_dash=False)
+            cli2.register(get_list)
+            result = runner.invoke(cli2.app, ['get_list'])
             assert result.exit_code == 0
             assert "apple" in result.output
             assert "banana" in result.output
             
             # String output
-            result = runner.invoke(cli.app, ['get_string'])
+            result = runner.invoke(cli.app, ['get-string'])
             assert result.exit_code == 0
             assert "Hello, World!" in result.output
             
             # Number output
-            result = runner.invoke(cli.app, ['get_number'])
+            result = runner.invoke(cli.app, ['get-number'])
             assert result.exit_code == 0
             assert "42" in result.output
 

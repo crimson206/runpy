@@ -117,3 +117,45 @@ class TestRunpyBasicConversion:
         with allure.step("Then it shows a type error"):
             assert result.exit_code != 0
             assert "Invalid value" in result.output or "type" in result.output.lower()
+
+    @allure.story("Command name transformation")
+    @allure.title("Given underscore function names, When dash transformation is enabled/disabled, Then commands match setting")
+    def test_command_name_transformation(self):
+        with allure.step("Given a function with underscores in name"):
+            def get_user_info(user_id: int) -> str:
+                """Get information about a user"""
+                return f"User {user_id} info"
+
+        with allure.step("When dash transformation is enabled (default)"):
+            from runpycli import Runpy
+            
+            cli = Runpy()
+            cli.register(get_user_info)
+            runner = CliRunner()
+            
+            # Should work with dashes
+            result = runner.invoke(cli.app, ['get-user-info', '--user-id', '123'])
+            assert result.exit_code == 0
+            assert "User 123 info" in result.output
+            
+            # Should NOT work with underscores
+            result = runner.invoke(cli.app, ['get_user_info', '--user-id', '123'])
+            assert result.exit_code != 0
+            assert "No such command" in result.output
+            # Check for helpful error message
+            assert "get-user-info" in result.output or "dash" in result.output.lower() or "underscore" in result.output.lower()
+
+        with allure.step("When dash transformation is disabled"):
+            cli2 = Runpy(transform_underscore_to_dash=False)
+            cli2.register(get_user_info)
+            runner2 = CliRunner()
+            
+            # Should work with underscores
+            result = runner2.invoke(cli2.app, ['get_user_info', '--user_id', '123'])
+            assert result.exit_code == 0
+            assert "User 123 info" in result.output
+            
+            # Should NOT work with dashes
+            result = runner2.invoke(cli2.app, ['get-user-info', '--user_id', '123'])
+            assert result.exit_code != 0
+            assert "No such command" in result.output

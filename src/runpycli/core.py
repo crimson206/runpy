@@ -65,19 +65,53 @@ except ImportError:
 analyze_function = _analyze_function
 
 
+class RunpyGroup(click.Group):
+    """Custom Click Group with enhanced error messages"""
+    
+    def __init__(self, *args, transform_underscore_to_dash: bool = True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.transform_underscore_to_dash = transform_underscore_to_dash
+    
+    def resolve_command(self, ctx, args):
+        """Override to provide better error messages for command not found"""
+        cmd_name = args[0]
+        cmd = self.commands.get(cmd_name)
+        
+        if cmd is None:
+            # Try to find similar commands
+            if self.transform_underscore_to_dash and '_' in cmd_name:
+                # Suggest dash version
+                dash_version = cmd_name.replace('_', '-')
+                if dash_version in self.commands:
+                    ctx.fail(f"No such command '{cmd_name}'. Did you mean '{dash_version}'?")
+            elif self.transform_underscore_to_dash and '-' in cmd_name:
+                # Check if underscore version was registered
+                underscore_version = cmd_name.replace('-', '_')
+                if any(orig_name.replace('_', '-') == cmd_name for orig_name in self.commands):
+                    ctx.fail(f"No such command '{cmd_name}'. This CLI uses dashes instead of underscores.")
+            
+            # Default error
+            ctx.fail(f"No such command '{cmd_name}'.")
+        
+        return cmd_name, cmd, args[1:]
+
+
 class Runpy:
     """Main class for converting Python functions to CLI commands"""
 
-    def __init__(self, name: Optional[str] = None, version: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, version: Optional[str] = None, 
+                 transform_underscore_to_dash: bool = True):
         """
         Initialize Runpy CLI generator
 
         Args:
             name: Base command name or path (e.g., "myapp" or "myapp/subcommand")
             version: Application version
+            transform_underscore_to_dash: Whether to convert underscores to dashes in command names
         """
         self.name = name or "cli"
         self.version = version
+        self.transform_underscore_to_dash = transform_underscore_to_dash
         self.commands = {}
         self.shortcuts = {}
         self.function_info = {}  # Store original function info for schema generation
@@ -89,8 +123,9 @@ class Runpy:
             self.name = parts[0]
             self.command_path = parts[1:]
 
-        # Create main click group
-        self.app = click.Group(name=self.name, help=f"{self.name} CLI")
+        # Create main click group with custom error handling
+        self.app = RunpyGroup(name=self.name, help=f"{self.name} CLI", 
+                              transform_underscore_to_dash=self.transform_underscore_to_dash)
 
         # Create nested groups if command path is provided
         self.current_group = self.app
@@ -123,7 +158,10 @@ class Runpy:
             name: Command name (defaults to function name)
             shortcuts: Dictionary mapping parameter names to short options
         """
-        cmd_name = name or func.__name__.replace("_", "-")
+        if name:
+            cmd_name = name
+        else:
+            cmd_name = func.__name__.replace("_", "-") if self.transform_underscore_to_dash else func.__name__
 
         # Analyze function
         func_info = analyze_function(func)
@@ -216,7 +254,10 @@ class Runpy:
         click_type = self._get_click_type(param_type)
 
         # Build option names
-        option_names = [f"--{param_name.replace('_', '-')}"]
+        if self.transform_underscore_to_dash if hasattr(self, 'transform_underscore_to_dash') else True:
+            option_names = [f"--{param_name.replace('_', '-')}"]
+        else:
+            option_names = [f"--{param_name}"]
         if param_name in shortcuts:
             option_names.insert(0, f"-{shortcuts[param_name]}")
 
@@ -291,18 +332,19 @@ class Runpy:
             # Otherwise add to main app
             self.app.add_command(command)
 
-    def group(self, name: str) -> "RunpyGroup":
+    def group(self, name: str) -> "RunpyCommandGroup":
         """Create a command group"""
         # Create a Click group for this subcommand
+        group_name = name.replace("_", "-") if self.transform_underscore_to_dash else name
         group_command = click.Group(
-            name=name.replace("_", "-"), help=f"{name} commands"
+            name=group_name, help=f"{name} commands"
         )
 
         # Add the group to the hierarchy
         self._add_command_to_hierarchy(group_command)
 
-        # Return a RunpyGroup instance
-        return RunpyGroup(group_command, self)
+        # Return a RunpyCommandGroup instance
+        return RunpyCommandGroup(group_command, self)
     
     def _add_schema_command(self) -> None:
         """Add the built-in schema command"""
@@ -912,7 +954,7 @@ class Runpy:
             self._man_docs_tree(info, lines)
 
 
-class RunpyGroup:
+class RunpyCommandGroup:
     """Represents a command group that can contain subcommands"""
 
     def __init__(self, group: click.Group, parent_runpy: Runpy):
@@ -940,7 +982,10 @@ class RunpyGroup:
             name: Command name (defaults to function name)
             shortcuts: Dictionary mapping parameter names to short options
         """
-        cmd_name = name or func.__name__.replace("_", "-")
+        if name:
+            cmd_name = name
+        else:
+            cmd_name = func.__name__.replace("_", "-") if self.parent_runpy.transform_underscore_to_dash else func.__name__
 
         # Analyze function
         func_info = analyze_function(func)
@@ -1013,15 +1058,16 @@ class RunpyGroup:
         # Add command to this group
         self.click_group.add_command(click_command)
 
-    def group(self, name: str) -> "RunpyGroup":
+    def group(self, name: str) -> "RunpyCommandGroup":
         """Create a subgroup within this group"""
         # Create a Click group for this subcommand
+        subgroup_name = name.replace("_", "-") if self.parent_runpy.transform_underscore_to_dash else name
         subgroup_command = click.Group(
-            name=name.replace("_", "-"), help=f"{name} commands"
+            name=subgroup_name, help=f"{name} commands"
         )
 
         # Add the subgroup to this group
         self.click_group.add_command(subgroup_command)
 
-        # Return a new RunpyGroup instance
-        return RunpyGroup(subgroup_command, self.parent_runpy)
+        # Return a new RunpyCommandGroup instance
+        return RunpyCommandGroup(subgroup_command, self.parent_runpy)
