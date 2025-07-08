@@ -1,7 +1,7 @@
 """Click framework helper utilities"""
 
 import click
-from typing import Any
+from typing import Any, Optional
 
 
 class RunpyGroup(click.Group):
@@ -116,3 +116,91 @@ def get_schema_type_from_annotation(annotation: str) -> str:
         return "object"
     else:
         return "string"
+
+
+class RunpyCommand(click.Command):
+    """Custom Click Command with enhanced help for BaseModel parameters"""
+    
+    def __init__(self, *args, models: Optional[dict] = None, func_info: Optional[dict] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.models = models or {}
+        self.func_info = func_info or {}
+    
+    def format_help(self, ctx, formatter):
+        """Override to add BaseModel documentation and return type info"""
+        # First, get the standard help
+        super().format_help(ctx, formatter)
+        
+        # Add return type information if available
+        if self.func_info:
+            return_annotation = self.func_info.get("return_annotation")
+            # Skip if no return type, or it's None/inspect._empty
+            if (return_annotation and 
+                return_annotation != "None" and 
+                "inspect._empty" not in str(return_annotation)):
+                
+                formatter.write("\n")
+                with formatter.section("Returns"):
+                    # Check if we have a description from docstring
+                    docstring = self.func_info.get("docstring", "")
+                    if docstring and "Returns:" in docstring:
+                        # Extract returns description from docstring
+                        lines = docstring.split("\n")
+                        in_returns = False
+                        for line in lines:
+                            if line.strip().startswith("Returns:"):
+                                in_returns = True
+                                continue
+                            if in_returns and line.strip() and not line.startswith(" "):
+                                break
+                            if in_returns and line.strip():
+                                formatter.write_text(line.strip())
+                    else:
+                        formatter.write_text(f"Type: {return_annotation}")
+        
+        # If we have models, add them to the help
+        if self.models:
+            formatter.write("\n")
+            with formatter.section("Models"):
+                for model_name, model_info in self.models.items():
+                    formatter.write_text(f"{model_name}:")
+                    if model_info.get('description'):
+                        formatter.write_text(model_info['description'])
+                    
+                    # Write fields
+                    for field_name, field_info in model_info.get('fields', {}).items():
+                        required = "required" if field_info.get('required') else "optional"
+                        field_type = field_info.get('type', 'Any')
+                        description = field_info.get('description', '')
+                        
+                        line = f"- {field_name} ({field_type}, {required})"
+                        if description:
+                            line += f": {description}"
+                        
+                        # Add constraints if any
+                        constraints = field_info.get('constraints', {})
+                        if constraints:
+                            constraint_strs = []
+                            for key, value in constraints.items():
+                                if key == "min_length":
+                                    constraint_strs.append(f"min length: {value}")
+                                elif key == "max_length":
+                                    constraint_strs.append(f"max length: {value}")
+                                elif key == "ge":
+                                    constraint_strs.append(f">= {value}")
+                                elif key == "gt":
+                                    constraint_strs.append(f"> {value}")
+                                elif key == "le":
+                                    constraint_strs.append(f"<= {value}")
+                                elif key == "lt":
+                                    constraint_strs.append(f"< {value}")
+                                elif key == "max_items":
+                                    constraint_strs.append(f"max items: {value}")
+                                elif key == "min_items":
+                                    constraint_strs.append(f"min items: {value}")
+                            if constraint_strs:
+                                line += f" [{', '.join(constraint_strs)}]"
+                        
+                        formatter.write_text(line)
+                    
+                    formatter.write_text("")

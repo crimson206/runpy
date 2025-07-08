@@ -50,6 +50,9 @@ class RunpyCommandGroup:
         # Store function info in parent for schema generation
         full_cmd_name = f"{self.click_group.name}/{cmd_name}"
         self.parent_runpy.function_info[full_cmd_name] = func_info
+        
+        # Store original function
+        self.parent_runpy.functions[full_cmd_name] = func
 
         # Store shortcuts in parent
         if shortcuts:

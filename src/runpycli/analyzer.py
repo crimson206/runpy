@@ -55,6 +55,13 @@ def _analyze_function_fallback(func: Callable) -> dict:
             }
         )
 
+    # Get return type annotation
+    return_annotation = sig.return_annotation
+    if return_annotation is not sig.empty:
+        return_annotation_str = str(return_annotation).replace("typing.", "")
+    else:
+        return_annotation_str = None
+
     return {
         "name": func.__name__,
         "summary": summary,
@@ -62,4 +69,5 @@ def _analyze_function_fallback(func: Callable) -> dict:
         "parameters": parameters,
         "is_async": inspect.iscoroutinefunction(func),
         "is_generator": inspect.isgeneratorfunction(func),
+        "return_annotation": return_annotation_str,
     }

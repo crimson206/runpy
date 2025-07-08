@@ -6,9 +6,10 @@ from typing import Callable, Dict, Any, Optional
 from functools import wraps
 
 from .analyzer import analyze_function
-from .click_helpers import RunpyGroup, get_click_type
+from .click_helpers import RunpyGroup, RunpyCommand, get_click_type
 from .commands import add_schema_command, add_docs_command
 from .group import RunpyCommandGroup
+from .pydantic_utils import get_pydantic_models_from_function, get_model_schema
 
 
 class Runpy:
@@ -30,6 +31,7 @@ class Runpy:
         self.commands = {}
         self.shortcuts = {}
         self.function_info = {}  # Store original function info for schema generation
+        self.functions = {}  # Store original function objects
 
         # Parse command path if provided
         self.command_path = []
@@ -81,10 +83,19 @@ class Runpy:
         
         # Store function info for schema generation
         self.function_info[cmd_name] = func_info
+        
+        # Store original function
+        self.functions[cmd_name] = func
 
         # Store shortcuts
         if shortcuts:
             self.shortcuts[cmd_name] = shortcuts
+
+        # Get Pydantic models used in this function
+        models = get_pydantic_models_from_function(func)
+        model_schemas = {}
+        for model_name, model_type in models.items():
+            model_schemas[model_name] = get_model_schema(model_type)
 
         # Create click command
         # Identify VAR_POSITIONAL parameter
@@ -94,7 +105,25 @@ class Runpy:
                 var_positional_param = param["name"]
                 break
 
-        @click.command(name=cmd_name, help=func_info.get("summary", func.__doc__))
+        # Build help text (return type will be handled by RunpyCommand)
+        help_text = func_info.get("summary", func.__doc__) or ""
+        
+        # Use RunpyCommand if we have models, otherwise regular command
+        if model_schemas:
+            command_decorator = lambda f: RunpyCommand(
+                name=cmd_name,
+                callback=f,
+                help=help_text,
+                models=model_schemas,
+                func_info=func_info
+            )
+        else:
+            command_decorator = lambda f: RunpyCommand(
+                name=cmd_name,
+                callback=f,
+                help=help_text,
+                func_info=func_info
+            )
         @wraps(func)
         def click_command(**kwargs):
             # Prepare function arguments
@@ -142,14 +171,17 @@ class Runpy:
 
             return result
 
+        # Create the command with decorator
+        click_command_instance = command_decorator(click_command)
+        
         # Add parameters to click command
         for param in reversed(func_info["parameters"]):
-            click_command = self._add_parameter_to_command(
-                click_command, param, self.shortcuts.get(cmd_name, {})
+            click_command_instance = self._add_parameter_to_command(
+                click_command_instance, param, self.shortcuts.get(cmd_name, {})
             )
 
         # Add command to appropriate group
-        self._add_command_to_hierarchy(click_command)
+        self._add_command_to_hierarchy(click_command_instance)
 
     def _add_parameter_to_command(
         self, command: click.Command, param_info: dict, shortcuts: dict

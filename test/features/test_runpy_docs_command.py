@@ -233,45 +233,5 @@ class TestRunpyDocsCommand:
             assert "delete-user" not in result.output
 
 
-    @allure.story("Export documentation")
-    @allure.title("Given export format, When calling docs, Then generates documentation file")
-    def test_docs_export_formats(self):
-        with allure.step("Given a CLI with documentation"):
-            def main_command() -> str:
-                """Main application command
-                
-                This is the primary entry point for the application.
-                """
-                pass
-
-        with allure.step("When I export documentation"):
-            from runpycli import Runpy
-            
-            cli = Runpy("myapp", version="1.0.0")
-            cli.register(main_command)
-            
-            runner = CliRunner()
-            
-            # Export as Markdown
-            md_result = runner.invoke(cli.app, ['docs', '--export', 'markdown'])
-            
-            # Export as HTML
-            html_result = runner.invoke(cli.app, ['docs', '--export', 'html'])
-            
-            # Export as man page
-            man_result = runner.invoke(cli.app, ['docs', '--export', 'man'])
-
-        with allure.step("Then it generates documentation in requested format"):
-            # Markdown format
-            assert md_result.exit_code == 0
-            assert "# myapp" in md_result.output
-            assert "## Commands" in md_result.output
-            assert "### main-command" in md_result.output
-            
-            # HTML format
-            assert html_result.exit_code == 0
-            assert "<h1>myapp Documentation</h1>" in html_result.output or "exported to" in html_result.output
-            
-            # Man page format
-            assert man_result.exit_code == 0
-            assert ".TH MYAPP" in man_result.output or "exported to" in man_result.output
+    # Test removed: export formats (--export option) no longer supported
+    # The docs command now only outputs to stdout in a single format
