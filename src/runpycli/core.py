@@ -16,7 +16,7 @@ class Runpy:
     """Main class for converting Python functions to CLI commands"""
 
     def __init__(self, name: Optional[str] = None, version: Optional[str] = None, 
-                 transform_underscore_to_dash: bool = True):
+                 transform_underscore_to_dash: bool = True, config_file: Optional[str] = None):
         """
         Initialize Runpy CLI generator
 
@@ -24,6 +24,7 @@ class Runpy:
             name: Base command name or path (e.g., "myapp" or "myapp/subcommand")
             version: Application version
             transform_underscore_to_dash: Whether to convert underscores to dashes in command names
+            config_file: Path to JSON configuration file with defaults and shortcuts
         """
         self.name = name or "cli"
         self.version = version
@@ -32,6 +33,11 @@ class Runpy:
         self.shortcuts = {}
         self.function_info = {}  # Store original function info for schema generation
         self.functions = {}  # Store original function objects
+        self.config_defaults = {}  # Store default values from config
+        
+        # Load configuration if provided
+        if config_file:
+            self._load_config(config_file)
 
         # Parse command path if provided
         self.command_path = []
@@ -58,6 +64,25 @@ class Runpy:
         # Add built-in commands
         add_schema_command(self)
         add_docs_command(self)
+
+    def _load_config(self, config_file: str) -> None:
+        """Load configuration from JSON file"""
+        import os
+        
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(f"Config file not found: {config_file}")
+            
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+            
+        # Load defaults
+        if 'defaults' in config:
+            self.config_defaults = config['defaults']
+            
+        # Load shortcuts
+        if 'shortcuts' in config:
+            # Store global shortcuts
+            self.shortcuts = config['shortcuts']
 
     def register(
         self,
@@ -192,6 +217,11 @@ class Runpy:
         default = param_info["default"]
         description = param_info["description"] or ""
 
+        # Check if there's a config default for this parameter
+        # Config defaults override function defaults
+        if param_name in self.config_defaults:
+            default = self.config_defaults[param_name]
+        
         # Determine if parameter is required
         is_required = default is None and param_info["kind"] != "VAR_POSITIONAL"
 
@@ -203,8 +233,12 @@ class Runpy:
             option_names = [f"--{param_name.replace('_', '-')}"]
         else:
             option_names = [f"--{param_name}"]
+        
+        # Check for shortcuts (function-specific first, then global)
         if param_name in shortcuts:
             option_names.insert(0, f"-{shortcuts[param_name]}")
+        elif param_name in self.shortcuts:
+            option_names.insert(0, f"-{self.shortcuts[param_name]}")
 
         # Handle different parameter kinds
         if param_info["kind"] == "VAR_POSITIONAL":
@@ -247,6 +281,42 @@ class Runpy:
         else:
             # Otherwise add to main app
             self.app.add_command(command)
+
+    def register_module(self, module, prefix: str = "") -> None:
+        """
+        Register all public functions from a module or class
+        
+        Args:
+            module: Module or class containing functions to register
+            prefix: Optional prefix to add to all command names
+        """
+        import inspect
+        
+        # Get all members of the module/class
+        members = inspect.getmembers(module)
+        
+        for name, obj in members:
+            # Skip private/protected members
+            if name.startswith('_'):
+                continue
+                
+            # Check if it's a callable function or static method
+            if callable(obj) and (inspect.isfunction(obj) or inspect.ismethod(obj) or hasattr(module, name)):
+                # For class methods, get the actual function
+                if hasattr(module, name):
+                    attr = getattr(module, name)
+                    if isinstance(attr, staticmethod):
+                        # Get function from staticmethod descriptor
+                        obj = attr.__func__
+                
+                # Create command name with prefix
+                if prefix:
+                    cmd_name = f"{prefix}_{name}"
+                else:
+                    cmd_name = name
+                    
+                # Register the function
+                self.register(obj, name=cmd_name)
 
     def group(self, name: str) -> RunpyCommandGroup:
         """Create a command group"""
