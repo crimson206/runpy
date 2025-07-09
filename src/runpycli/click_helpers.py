@@ -6,32 +6,39 @@ from typing import Any, Optional
 
 class RunpyGroup(click.Group):
     """Custom Click Group with enhanced error messages"""
-    
+
     def __init__(self, *args, transform_underscore_to_dash: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         self.transform_underscore_to_dash = transform_underscore_to_dash
-    
+
     def resolve_command(self, ctx, args):
         """Override to provide better error messages for command not found"""
         cmd_name = args[0]
         cmd = self.commands.get(cmd_name)
-        
+
         if cmd is None:
             # Try to find similar commands
-            if self.transform_underscore_to_dash and '_' in cmd_name:
+            if self.transform_underscore_to_dash and "_" in cmd_name:
                 # Suggest dash version
-                dash_version = cmd_name.replace('_', '-')
+                dash_version = cmd_name.replace("_", "-")
                 if dash_version in self.commands:
-                    ctx.fail(f"No such command '{cmd_name}'. Did you mean '{dash_version}'?")
-            elif self.transform_underscore_to_dash and '-' in cmd_name:
+                    ctx.fail(
+                        f"No such command '{cmd_name}'. Did you mean '{dash_version}'?"
+                    )
+            elif self.transform_underscore_to_dash and "-" in cmd_name:
                 # Check if underscore version was registered
-                underscore_version = cmd_name.replace('-', '_')
-                if any(orig_name.replace('_', '-') == cmd_name for orig_name in self.commands):
-                    ctx.fail(f"No such command '{cmd_name}'. This CLI uses dashes instead of underscores.")
-            
+                underscore_version = cmd_name.replace("-", "_")
+                if any(
+                    orig_name.replace("_", "-") == cmd_name
+                    for orig_name in self.commands
+                ):
+                    ctx.fail(
+                        f"No such command '{cmd_name}'. This CLI uses dashes instead of underscores."
+                    )
+
             # Default error
             ctx.fail(f"No such command '{cmd_name}'.")
-        
+
         return cmd_name, cmd, args[1:]
 
 
@@ -86,8 +93,10 @@ def get_param_type_string(click_type) -> str:
 def get_schema_type_from_annotation(annotation: str) -> str:
     """Get schema type from Python type annotation string"""
     # Clean up the annotation string
-    annotation = annotation.replace("typing.", "").replace("<class '", "").replace("'>", "")
-    
+    annotation = (
+        annotation.replace("typing.", "").replace("<class '", "").replace("'>", "")
+    )
+
     # Basic types
     if annotation in ["int", "integer"]:
         return "integer"
@@ -97,7 +106,7 @@ def get_schema_type_from_annotation(annotation: str) -> str:
         return "string"
     elif annotation in ["bool", "boolean"]:
         return "boolean"
-    
+
     # Complex types
     elif annotation.startswith("List[") or annotation.startswith("list["):
         return "array"
@@ -120,25 +129,33 @@ def get_schema_type_from_annotation(annotation: str) -> str:
 
 class RunpyCommand(click.Command):
     """Custom Click Command with enhanced help for BaseModel parameters"""
-    
-    def __init__(self, *args, models: Optional[dict] = None, func_info: Optional[dict] = None, **kwargs):
+
+    def __init__(
+        self,
+        *args,
+        models: Optional[dict] = None,
+        func_info: Optional[dict] = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.models = models or {}
         self.func_info = func_info or {}
-    
+
     def format_help(self, ctx, formatter):
         """Override to add BaseModel documentation and return type info"""
         # First, get the standard help
         super().format_help(ctx, formatter)
-        
+
         # Add return type information if available
         if self.func_info:
             return_annotation = self.func_info.get("return_annotation")
             # Skip if no return type, or it's None/inspect._empty
-            if (return_annotation and 
-                return_annotation != "None" and 
-                "inspect._empty" not in str(return_annotation)):
-                
+            if (
+                return_annotation
+                and return_annotation != "None"
+                and "inspect._empty" not in str(return_annotation)
+            ):
+
                 formatter.write("\n")
                 with formatter.section("Returns"):
                     # Check if we have a description from docstring
@@ -157,28 +174,30 @@ class RunpyCommand(click.Command):
                                 formatter.write_text(line.strip())
                     else:
                         formatter.write_text(f"Type: {return_annotation}")
-        
+
         # If we have models, add them to the help
         if self.models:
             formatter.write("\n")
             with formatter.section("Models"):
                 for model_name, model_info in self.models.items():
                     formatter.write_text(f"{model_name}:")
-                    if model_info.get('description'):
-                        formatter.write_text(model_info['description'])
-                    
+                    if model_info.get("description"):
+                        formatter.write_text(model_info["description"])
+
                     # Write fields
-                    for field_name, field_info in model_info.get('fields', {}).items():
-                        required = "required" if field_info.get('required') else "optional"
-                        field_type = field_info.get('type', 'Any')
-                        description = field_info.get('description', '')
-                        
+                    for field_name, field_info in model_info.get("fields", {}).items():
+                        required = (
+                            "required" if field_info.get("required") else "optional"
+                        )
+                        field_type = field_info.get("type", "Any")
+                        description = field_info.get("description", "")
+
                         line = f"- {field_name} ({field_type}, {required})"
                         if description:
                             line += f": {description}"
-                        
+
                         # Add constraints if any
-                        constraints = field_info.get('constraints', {})
+                        constraints = field_info.get("constraints", {})
                         if constraints:
                             constraint_strs = []
                             for key, value in constraints.items():
@@ -200,7 +219,7 @@ class RunpyCommand(click.Command):
                                     constraint_strs.append(f"min items: {value}")
                             if constraint_strs:
                                 line += f" [{', '.join(constraint_strs)}]"
-                        
+
                         formatter.write_text(line)
-                    
+
                     formatter.write_text("")
