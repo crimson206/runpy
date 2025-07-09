@@ -10,6 +10,7 @@ from .click_helpers import RunpyGroup, RunpyCommand, get_click_type
 from .commands import add_schema_command, add_docs_command
 from .group import RunpyCommandGroup
 from .pydantic_utils import get_pydantic_models_from_function, get_model_schema, is_pydantic_model
+from .parsers import parse as parse_input, ParserError
 
 
 class Runpy:
@@ -181,20 +182,20 @@ class Runpy:
                 if param_name in func_args and param_obj.annotation != param_obj.empty:
                     # Check if this parameter is a Pydantic BaseModel
                     if is_pydantic_model(param_obj.annotation):
-                        # Convert JSON string to BaseModel instance
-                        json_str = func_args[param_name]
+                        # Convert input string to BaseModel instance
+                        input_str = func_args[param_name]
                         try:
-                            if isinstance(json_str, str):
-                                # Parse JSON string
-                                json_data = json.loads(json_str)
+                            if isinstance(input_str, str):
+                                # Parse input string using flexible parser
+                                parsed_data = parse_input(input_str)
                                 # Create BaseModel instance
-                                func_args[param_name] = param_obj.annotation(**json_data)
-                            elif isinstance(json_str, dict):
+                                func_args[param_name] = param_obj.annotation(**parsed_data)
+                            elif isinstance(input_str, dict):
                                 # If already a dict, create BaseModel directly
-                                func_args[param_name] = param_obj.annotation(**json_str)
-                        except json.JSONDecodeError as e:
+                                func_args[param_name] = param_obj.annotation(**input_str)
+                        except ParserError as e:
                             raise click.BadParameter(
-                                f"Invalid JSON for parameter '{param_name}': {str(e)}"
+                                f"Failed to parse input for parameter '{param_name}': {str(e)}"
                             )
                         except Exception as e:
                             raise click.BadParameter(
@@ -283,7 +284,10 @@ class Runpy:
             # Show the actual BaseModel type in help
             model_name = param_obj.annotation.__name__
             metavar = model_name
-            description = description.strip()
+            if description:
+                description = f"Input for {model_name} (JSON/Python/TypeScript format). {description}".strip()
+            else:
+                description = f"Input for {model_name} (JSON/Python/TypeScript format)"
         else:
             # Use Python type annotation as metavar
             if param_type == "int" or param_type == "<class 'int'>":

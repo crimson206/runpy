@@ -15,6 +15,7 @@ Runpy automatically converts your Python functions into command-line interfaces 
 - 🏗️ **Command Groups**: Organize commands in hierarchical groups
 - 🔧 **Flexible Configuration**: YAML/JSON config file support
 - 📦 **Pydantic Integration**: Full support for Pydantic models as parameters
+- 🌐 **Multiple Input Formats**: Accept JSON, Python dict, and TypeScript object notation
 - 🎨 **Customizable**: Extensive customization options for advanced use cases
 
 ## Installation
@@ -78,9 +79,16 @@ def create_user(user: UserInput) -> dict:
     return {"status": "created", "user": user.model_dump()}
 ```
 
-Usage:
+Usage with multiple input formats:
 ```bash
+# JSON format (standard)
 python mycli.py create-user --user '{"name": "John Doe", "age": 30, "emails": ["john@example.com"]}'
+
+# Python dict format
+python mycli.py create-user --user "{'name': 'John Doe', 'age': 30, 'emails': ['john@example.com']}"
+
+# TypeScript/JavaScript object format
+python mycli.py create-user --user '{name: "John Doe", age: 30, emails: ["john@example.com"]}'
 ```
 
 ### Command Groups
