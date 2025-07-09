@@ -1,6 +1,6 @@
 [project]
 name = "runpycli"
-version = "1.0.0"
+version = "1.1.0"
 description = "Convert Python functions to CLI commands automatically"
 authors = [
     {name = "crimson206",email = "sisung.kim1@gmail.com"}
