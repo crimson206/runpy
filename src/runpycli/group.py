@@ -42,15 +42,19 @@ class RunpyCommandGroup:
         if name:
             cmd_name = name
         else:
-            cmd_name = func.__name__.replace("_", "-") if self.parent_runpy.transform_underscore_to_dash else func.__name__
+            cmd_name = (
+                func.__name__.replace("_", "-")
+                if self.parent_runpy.transform_underscore_to_dash
+                else func.__name__
+            )
 
         # Analyze function
         func_info = analyze_function(func)
-        
+
         # Store function info in parent for schema generation
         full_cmd_name = f"{self.click_group.name}/{cmd_name}"
         self.parent_runpy.function_info[full_cmd_name] = func_info
-        
+
         # Store original function
         self.parent_runpy.functions[full_cmd_name] = func
 
@@ -112,7 +116,9 @@ class RunpyCommandGroup:
             click_command = self.parent_runpy._add_parameter_to_command(
                 click_command,
                 param,
-                self.parent_runpy.shortcuts.get(f"{self.click_group.name}/{cmd_name}", {}),
+                self.parent_runpy.shortcuts.get(
+                    f"{self.click_group.name}/{cmd_name}", {}
+                ),
             )
 
         # Add command to this group
@@ -121,10 +127,12 @@ class RunpyCommandGroup:
     def group(self, name: str) -> "RunpyCommandGroup":
         """Create a subgroup within this group"""
         # Create a Click group for this subcommand
-        subgroup_name = name.replace("_", "-") if self.parent_runpy.transform_underscore_to_dash else name
-        subgroup_command = click.Group(
-            name=subgroup_name, help=f"{name} commands"
+        subgroup_name = (
+            name.replace("_", "-")
+            if self.parent_runpy.transform_underscore_to_dash
+            else name
         )
+        subgroup_command = click.Group(name=subgroup_name, help=f"{name} commands")
 
         # Add the subgroup to this group
         self.click_group.add_command(subgroup_command)
