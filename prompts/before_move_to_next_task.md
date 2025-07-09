@@ -24,9 +24,9 @@ fix: update test assertions for command name transformations
 ```
 
 ### 3. Version Bumping
-- For new features: bump minor version (0.1.0 ’ 0.2.0)
-- For bug fixes: bump patch version (0.1.0 ’ 0.1.1)
-- For breaking changes: bump major version (0.1.0 ’ 1.0.0)
+- For new features: bump minor version (0.1.0 ï¿½ 0.2.0)
+- For bug fixes: bump patch version (0.1.0 ï¿½ 0.1.1)
+- For breaking changes: bump major version (0.1.0 ï¿½ 1.0.0)
 - For pre-release: use appropriate suffix (-alpha.1, -beta.1, -rc.1)
 
 ### 4. Create Release Commit
