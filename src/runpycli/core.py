@@ -9,14 +9,19 @@ from .analyzer import analyze_function
 from .click_helpers import RunpyGroup, RunpyCommand, get_click_type
 from .commands import add_schema_command, add_docs_command
 from .group import RunpyCommandGroup
-from .pydantic_utils import get_pydantic_models_from_function, get_model_schema
+from .pydantic_utils import get_pydantic_models_from_function, get_model_schema, is_pydantic_model
 
 
 class Runpy:
     """Main class for converting Python functions to CLI commands"""
 
-    def __init__(self, name: Optional[str] = None, version: Optional[str] = None, 
-                 transform_underscore_to_dash: bool = True, config_file: Optional[str] = None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        version: Optional[str] = None,
+        transform_underscore_to_dash: bool = True,
+        config_file: Optional[str] = None,
+    ):
         """
         Initialize Runpy CLI generator
 
@@ -34,7 +39,7 @@ class Runpy:
         self.function_info = {}  # Store original function info for schema generation
         self.functions = {}  # Store original function objects
         self.config_defaults = {}  # Store default values from config
-        
+
         # Load configuration if provided
         if config_file:
             self._load_config(config_file)
@@ -47,8 +52,11 @@ class Runpy:
             self.command_path = parts[1:]
 
         # Create main click group with custom error handling
-        self.app = RunpyGroup(name=self.name, help=f"{self.name} CLI", 
-                              transform_underscore_to_dash=self.transform_underscore_to_dash)
+        self.app = RunpyGroup(
+            name=self.name,
+            help=f"{self.name} CLI",
+            transform_underscore_to_dash=self.transform_underscore_to_dash,
+        )
 
         # Create nested groups if command path is provided
         self.current_group = self.app
@@ -60,7 +68,7 @@ class Runpy:
         # Add version option if provided
         if self.version:
             self.app = click.version_option(version=self.version)(self.app)
-        
+
         # Add built-in commands
         add_schema_command(self)
         add_docs_command(self)
@@ -68,21 +76,21 @@ class Runpy:
     def _load_config(self, config_file: str) -> None:
         """Load configuration from JSON file"""
         import os
-        
+
         if not os.path.exists(config_file):
             raise FileNotFoundError(f"Config file not found: {config_file}")
-            
-        with open(config_file, 'r') as f:
+
+        with open(config_file, "r") as f:
             config = json.load(f)
-            
+
         # Load defaults
-        if 'defaults' in config:
-            self.config_defaults = config['defaults']
-            
+        if "defaults" in config:
+            self.config_defaults = config["defaults"]
+
         # Load shortcuts
-        if 'shortcuts' in config:
+        if "shortcuts" in config:
             # Store global shortcuts
-            self.shortcuts = config['shortcuts']
+            self.shortcuts = config["shortcuts"]
 
     def register(
         self,
@@ -101,14 +109,18 @@ class Runpy:
         if name:
             cmd_name = name
         else:
-            cmd_name = func.__name__.replace("_", "-") if self.transform_underscore_to_dash else func.__name__
+            cmd_name = (
+                func.__name__.replace("_", "-")
+                if self.transform_underscore_to_dash
+                else func.__name__
+            )
 
         # Analyze function
         func_info = analyze_function(func)
-        
+
         # Store function info for schema generation
         self.function_info[cmd_name] = func_info
-        
+
         # Store original function
         self.functions[cmd_name] = func
 
@@ -132,7 +144,7 @@ class Runpy:
 
         # Build help text (return type will be handled by RunpyCommand)
         help_text = func_info.get("summary", func.__doc__) or ""
-        
+
         # Use RunpyCommand if we have models, otherwise regular command
         if model_schemas:
             command_decorator = lambda f: RunpyCommand(
@@ -140,15 +152,13 @@ class Runpy:
                 callback=f,
                 help=help_text,
                 models=model_schemas,
-                func_info=func_info
+                func_info=func_info,
             )
         else:
             command_decorator = lambda f: RunpyCommand(
-                name=cmd_name,
-                callback=f,
-                help=help_text,
-                func_info=func_info
+                name=cmd_name, callback=f, help=help_text, func_info=func_info
             )
+
         @wraps(func)
         def click_command(**kwargs):
             # Prepare function arguments
@@ -162,6 +172,34 @@ class Runpy:
                     var_args = value
                 else:
                     func_args[key] = value
+            
+            # Process parameters to handle BaseModel types
+            import inspect
+            sig = inspect.signature(func)
+            
+            for param_name, param_obj in sig.parameters.items():
+                if param_name in func_args and param_obj.annotation != param_obj.empty:
+                    # Check if this parameter is a Pydantic BaseModel
+                    if is_pydantic_model(param_obj.annotation):
+                        # Convert JSON string to BaseModel instance
+                        json_str = func_args[param_name]
+                        try:
+                            if isinstance(json_str, str):
+                                # Parse JSON string
+                                json_data = json.loads(json_str)
+                                # Create BaseModel instance
+                                func_args[param_name] = param_obj.annotation(**json_data)
+                            elif isinstance(json_str, dict):
+                                # If already a dict, create BaseModel directly
+                                func_args[param_name] = param_obj.annotation(**json_str)
+                        except json.JSONDecodeError as e:
+                            raise click.BadParameter(
+                                f"Invalid JSON for parameter '{param_name}': {str(e)}"
+                            )
+                        except Exception as e:
+                            raise click.BadParameter(
+                                f"Error creating {param_obj.annotation.__name__} for parameter '{param_name}': {str(e)}"
+                            )
 
             # Call the original function
             if var_positional_param:
@@ -198,7 +236,7 @@ class Runpy:
 
         # Create the command with decorator
         click_command_instance = command_decorator(click_command)
-        
+
         # Add parameters to click command
         for param in reversed(func_info["parameters"]):
             click_command_instance = self._add_parameter_to_command(
@@ -221,19 +259,57 @@ class Runpy:
         # Config defaults override function defaults
         if param_name in self.config_defaults:
             default = self.config_defaults[param_name]
-        
+
         # Determine if parameter is required
         is_required = default is None and param_info["kind"] != "VAR_POSITIONAL"
+        
+        # Check if this is a BaseModel parameter
+        import inspect
+        func = self.functions.get(command.name)
+        is_basemodel_param = False
+        if func:
+            sig = inspect.signature(func)
+            if param_name in sig.parameters:
+                param_obj = sig.parameters[param_name]
+                if param_obj.annotation != param_obj.empty:
+                    is_basemodel_param = is_pydantic_model(param_obj.annotation)
 
         # Get click type from annotation
         click_type = get_click_type(param_type)
+        
+        # Prepare metavar (display type) for the parameter
+        metavar = None
+        if is_basemodel_param and param_obj.annotation != param_obj.empty:
+            # Show the actual BaseModel type in help
+            model_name = param_obj.annotation.__name__
+            metavar = model_name
+            description = description.strip()
+        else:
+            # Use Python type annotation as metavar
+            if param_type == "int" or param_type == "<class 'int'>":
+                metavar = "int"
+            elif param_type == "float" or param_type == "<class 'float'>":
+                metavar = "float"
+            elif param_type == "str" or param_type == "<class 'str'>":
+                metavar = "str"
+            elif param_type == "bool" or param_type == "<class 'bool'>":
+                metavar = "bool"
+            elif "List[" in param_type or "list[" in param_type:
+                metavar = param_type.replace("typing.", "")
+            else:
+                # Clean up the type annotation for display
+                metavar = param_type.replace("typing.", "").replace("<class '", "").replace("'>", "")
 
         # Build option names
-        if self.transform_underscore_to_dash if hasattr(self, 'transform_underscore_to_dash') else True:
+        if (
+            self.transform_underscore_to_dash
+            if hasattr(self, "transform_underscore_to_dash")
+            else True
+        ):
             option_names = [f"--{param_name.replace('_', '-')}"]
         else:
             option_names = [f"--{param_name}"]
-        
+
         # Check for shortcuts (function-specific first, then global)
         if param_name in shortcuts:
             option_names.insert(0, f"-{shortcuts[param_name]}")
@@ -269,6 +345,7 @@ class Runpy:
                     type=click_type,
                     help=description,
                     show_default=True if default is not None else False,
+                    metavar=metavar,
                 )
 
         return decorator(command)
@@ -285,46 +362,50 @@ class Runpy:
     def register_module(self, module, prefix: str = "") -> None:
         """
         Register all public functions from a module or class
-        
+
         Args:
             module: Module or class containing functions to register
             prefix: Optional prefix to add to all command names
         """
         import inspect
-        
+
         # Get all members of the module/class
         members = inspect.getmembers(module)
-        
+
         for name, obj in members:
             # Skip private/protected members
-            if name.startswith('_'):
+            if name.startswith("_"):
                 continue
-                
+
             # Check if it's a callable function or static method
-            if callable(obj) and (inspect.isfunction(obj) or inspect.ismethod(obj) or hasattr(module, name)):
+            if callable(obj) and (
+                inspect.isfunction(obj)
+                or inspect.ismethod(obj)
+                or hasattr(module, name)
+            ):
                 # For class methods, get the actual function
                 if hasattr(module, name):
                     attr = getattr(module, name)
                     if isinstance(attr, staticmethod):
                         # Get function from staticmethod descriptor
                         obj = attr.__func__
-                
+
                 # Create command name with prefix
                 if prefix:
                     cmd_name = f"{prefix}_{name}"
                 else:
                     cmd_name = name
-                    
+
                 # Register the function
                 self.register(obj, name=cmd_name)
 
     def group(self, name: str) -> RunpyCommandGroup:
         """Create a command group"""
         # Create a Click group for this subcommand
-        group_name = name.replace("_", "-") if self.transform_underscore_to_dash else name
-        group_command = click.Group(
-            name=group_name, help=f"{name} commands"
+        group_name = (
+            name.replace("_", "-") if self.transform_underscore_to_dash else name
         )
+        group_command = click.Group(name=group_name, help=f"{name} commands")
 
         # Add the group to the hierarchy
         self._add_command_to_hierarchy(group_command)
