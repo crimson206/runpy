@@ -101,7 +101,7 @@ class TestRunpyBasicConversion:
 
         with allure.step("Then I can use shortcuts"):
             result = runner.invoke(
-                cli.app, ["deploy", "-n", "myapp", "-v", "1.0.0", "-f"]
+                cli.app, ["deploy", "-n", "myapp", "-v", "1.0.0", "-f", "true"]
             )
 
             assert result.exit_code == 0
