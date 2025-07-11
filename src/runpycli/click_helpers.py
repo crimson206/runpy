@@ -62,6 +62,14 @@ def get_click_type(type_annotation: str) -> Any:
     # Check if it's a simple type
     if clean_type in type_map:
         return type_map[clean_type]
+    
+    # Handle Optional types
+    if clean_type.startswith("Optional[") or clean_type.startswith("typing.Optional["):
+        # Extract the inner type
+        start_idx = clean_type.find("[") + 1
+        inner_type = clean_type[start_idx:-1]
+        # Recursively get the click type for the inner type
+        return get_click_type(inner_type)
 
     # Handle List types
     if clean_type.startswith("List[") or clean_type.startswith("list["):

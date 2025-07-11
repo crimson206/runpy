@@ -241,14 +241,14 @@ class Runpy:
         # Add parameters to click command
         for param in reversed(func_info["parameters"]):
             click_command_instance = self._add_parameter_to_command(
-                click_command_instance, param, self.shortcuts.get(cmd_name, {})
+                click_command_instance, param, self.shortcuts.get(cmd_name, {}), func
             )
 
         # Add command to appropriate group
         self._add_command_to_hierarchy(click_command_instance)
 
     def _add_parameter_to_command(
-        self, command: click.Command, param_info: dict, shortcuts: dict
+        self, command: click.Command, param_info: dict, shortcuts: dict, func=None
     ) -> click.Command:
         """Add a parameter to a click command"""
         param_name = param_info["name"]
@@ -262,11 +262,23 @@ class Runpy:
             default = self.config_defaults[param_name]
 
         # Determine if parameter is required
-        is_required = default is None and param_info["kind"] != "VAR_POSITIONAL"
+        # A parameter is required only if it has no default value in the function signature
+        # Check if parameter has a default value (even if it's None)
+        import inspect
+        has_default = False
+        # Use the func parameter if provided, otherwise try to get from stored functions
+        if not func:
+            func = self.functions.get(command.name)
+        if func:
+            sig = inspect.signature(func)
+            if param_name in sig.parameters:
+                param = sig.parameters[param_name]
+                has_default = param.default != inspect.Parameter.empty
+        
+        # If parameter has a default value (including None), it's optional
+        is_required = not has_default and param_info["kind"] != "VAR_POSITIONAL"
         
         # Check if this is a BaseModel parameter
-        import inspect
-        func = self.functions.get(command.name)
         is_basemodel_param = False
         if func:
             sig = inspect.signature(func)
@@ -332,25 +344,15 @@ class Runpy:
             )
         else:
             # Regular parameters as options
-            # Handle boolean flags specially
-            if param_type in ["bool", "<class 'bool'>"]:
-                decorator = click.option(
-                    *option_names,
-                    is_flag=True,
-                    default=default,
-                    help=description,
-                    show_default=True if default is not None else False,
-                )
-            else:
-                decorator = click.option(
-                    *option_names,
-                    default=default,
-                    required=is_required,
-                    type=click_type,
-                    help=description,
-                    show_default=True if default is not None else False,
-                    metavar=metavar,
-                )
+            decorator = click.option(
+                *option_names,
+                default=default,
+                required=is_required,
+                type=click_type,
+                help=description,
+                show_default=True if default is not None else False,
+                metavar=metavar,
+            )
 
         return decorator(command)
 

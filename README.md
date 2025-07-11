@@ -178,6 +178,33 @@ Runpy supports a wide range of Python types:
 - Enums: `Enum` subclasses
 - File types: `Path`, `FilePath`, `DirectoryPath`
 
+### Boolean Parameters
+
+Boolean parameters are handled as regular options, not flags:
+
+```bash
+# Correct usage
+python mycli.py command --bool-param true
+python mycli.py command --bool-param false
+
+# NOT as flags (this is not supported)
+python mycli.py command --bool-param  # ❌
+```
+
+### Optional Parameters
+
+Parameters with default values (including `None`) are automatically optional:
+
+```python
+def process(
+    required_param: str,  # Required: must provide --required-param
+    optional_str: Optional[str] = None,  # Optional: can omit
+    optional_int: Optional[int] = None,  # Optional: can omit
+    optional_with_default: str = "default"  # Optional: uses default if omitted
+):
+    pass
+```
+
 ## Best Practices
 
 1. **Use Type Hints**: Always add type hints to get automatic type validation
