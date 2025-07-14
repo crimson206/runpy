@@ -1,0 +1,25 @@
+{
+    "name": "example-project",
+    "version": "1.0.0",
+    "description": "Example project using miniature with dependencies array",
+    "dependencies": [
+        {
+            "pkgName": "my-card",
+            "domain": "https://github.com/",
+            "repoName": "crimson206/db-repo",
+            "pathName": "component/my-card",
+            "branch": "main",
+            "version": "0.1.0",
+            "pkgType": "javascript"
+        },
+        {
+            "pkgName": "my-card2",
+            "domain": "https://github.com/",
+            "repoName": "crimson206/my-card2",
+            "pathName": "component/any-name",
+            "branch": "main",
+            "version": "0.1.0",
+            "pkgType": "javascript"
+        }
+    ]
+}

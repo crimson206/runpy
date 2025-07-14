@@ -1,0 +1,28 @@
+{
+    "miniatures": [
+        {
+            "pkgName": "my-card",
+            "domain": "https://github.com/",
+            "repoName": "crimson206/runpy",
+            "branch": "main",
+            "localDir": "repos/runpy",
+            "loaded": true
+        },
+        {
+            "pkgName": "runpy-experimental",
+            "domain": "https://github.com/",
+            "repoName": "crimson206/runpy",
+            "branch": "experimental",
+            "localDir": "repos/runpy-experimental",
+            "loaded": true
+        },
+        {
+            "pkgName": "my-card2", 
+            "domain": "https://github.com/",
+            "repoName": "crimson206/templator",
+            "branch": "main",
+            "localDir": "repos/templator",
+            "loaded": true
+        }
+    ]
+}

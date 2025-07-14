@@ -1,0 +1,20 @@
+{
+    "miniatures": [
+        {
+            "pkgName": "my-card",
+            "domain": "https://github.com/",
+            "repoName": "crimson206/db-repo",
+            "branch": "main",
+            "localDir": "src/component/my_card",
+            "loaded": true
+        },
+        {
+            "pkgName": "my-card2", 
+            "domain": "https://github.com/",
+            "repoName": "crimson206/my-card2",
+            "branch": "main",
+            "localDir": "src/component/my_card2",
+            "loaded": true
+        }
+    ]
+}

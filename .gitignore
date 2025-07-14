@@ -1,3 +1,4 @@
+test-venv/
 cli-bridge/
 func-analyzer/
 .runsh/

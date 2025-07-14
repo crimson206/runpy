@@ -1,14 +1,18 @@
 [project]
-name = "runpycli"
-version = "1.2.0"
-description = "Convert Python functions to CLI commands automatically"
+name = "miniature"
+version = "2.0.0.dev"
+description = "Python package for managing local git repositories and publishing packages with version tagging"
 authors = [
-    {name = "crimson206",email = "sisung.kim1@gmail.com"}
+    {name = "Sisung Kim", email = "sisung.kim1@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.10"
 dependencies = [
-    "pydantic (>=2.11.5,<3.0.0)",
-    "func-analyzer (>=0.1.1,<0.2.0)",
-    "click (>=8.2.1,<9.0.0)"
+    "runpycli>=0.1.0",
+    "pyshell",
+    "packaging",
+    "gitpython",
 ]
+
+[project.scripts]
+miniature = "miniature.cli:cli.app"
