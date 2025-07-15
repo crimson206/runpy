@@ -1,7 +1,7 @@
 cli-bridge/
 func-analyzer/
-.runsh/
 example.py
+cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
