@@ -234,10 +234,20 @@ def display_command_help_in_tree(cmd: click.Command, prefix: str) -> None:
     if hasattr(cmd, "func_info"):
         func_info = cmd.func_info
         
-        # Show description
-        if cmd.help:
-            click.echo(f"{prefix}{cmd.help}")
+        # Show summary
+        summary = func_info.get("summary", "")
+        if summary:
+            click.echo(f"{prefix}{summary}")
+        
+        # Show description (body)
+        description = func_info.get("description", "")
+        if description and description != summary:  # Don't repeat if same as summary
             click.echo(f"{prefix}")
+            # Split description into lines and display each
+            for line in description.strip().split('\n'):
+                click.echo(f"{prefix}{line}")
+        
+        click.echo(f"{prefix}")
         
         # Show options
         if func_info.get("parameters"):
@@ -392,7 +402,24 @@ def display_enhanced_command_docs(cmd: click.Command, runpy_instance: "Runpy") -
     click.echo(formatter.getvalue())
 
     # Show description
-    if cmd.help:
+    if hasattr(cmd, "func_info"):
+        func_info = cmd.func_info
+        
+        # Show summary
+        summary = func_info.get("summary", "")
+        if summary:
+            click.echo(f"  {summary}")
+        
+        # Show description (body) if different from summary
+        description = func_info.get("description", "")
+        if description and description != summary:
+            click.echo()
+            # Indent description lines
+            for line in description.strip().split('\n'):
+                click.echo(f"  {line}")
+        
+        click.echo()
+    elif cmd.help:
         click.echo(f"  {cmd.help}")
         click.echo()
 
