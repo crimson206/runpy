@@ -102,10 +102,14 @@ class RunpyCommandGroup:
             # Format output
             if result is not None:
                 if isinstance(result, dict):
-                    click.echo(json.dumps(result, indent=2))
+                    click.echo(json.dumps(result, indent=2, ensure_ascii=False, separators=(',', ': ')))
                 elif isinstance(result, (list, tuple)):
-                    for item in result:
-                        click.echo(item)
+                    # If list contains dicts, format as JSON array
+                    if result and all(isinstance(item, dict) for item in result):
+                        click.echo(json.dumps(result, indent=2, ensure_ascii=False, separators=(',', ': ')))
+                    else:
+                        for item in result:
+                            click.echo(item)
                 else:
                     click.echo(result)
 

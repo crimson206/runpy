@@ -27,7 +27,7 @@ def add_schema_command(runpy_instance: "Runpy") -> None:
         schema = generate_schema(runpy_instance)
 
         if format == "json":
-            click.echo(json.dumps(schema, indent=2))
+            click.echo(json.dumps(schema, indent=2, ensure_ascii=False, separators=(',', ': ')))
         elif format == "yaml":
             # Simple YAML-like output (without external dependency)
             click.echo(schema_to_yaml(schema))
